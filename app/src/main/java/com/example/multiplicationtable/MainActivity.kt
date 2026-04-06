@@ -267,13 +267,13 @@ private fun GameScreen(
         }
     }
 }
-
+@Preview(showBackground = true)
 @Composable
 private fun SummaryScreen(
-    score: Int,
-    rounds: Int,
-    onPlayAgainClicked: () -> Unit,
-    onChangeRangeClicked: () -> Unit,
+    score: Int = 0,
+    rounds: Int = 10,
+    onPlayAgainClicked: () -> Unit = {},
+    onChangeRangeClicked: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
