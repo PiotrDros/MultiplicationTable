@@ -11,7 +11,7 @@ class ExampleUnitTest {
         val random = Random(1234)
 
         repeat(200) {
-            val round = generateRound(minValue = 6, random = random)
+            val round = generateRound(minValue = 6, maxValue = 9, random = random)
             assertTrue(round.left in 6..9)
             assertTrue(round.right in 6..9)
         }
@@ -20,7 +20,8 @@ class ExampleUnitTest {
     @Test
     fun submitAnswer_addsPointForCorrectAnswer() {
         val session = GameSession(
-            minValue = 2,
+            minMultiplier = 2,
+            maxMultiplier = 9,
             score = 0,
             roundNumber = 1,
             totalRounds = totalRounds,
@@ -35,7 +36,7 @@ class ExampleUnitTest {
 
     @Test
     fun submitAnswer_finishesAfterTenRounds() {
-        var session = startSession(minValue = 2, random = Random(1))
+        var session = startSession(minValue = 2, maxValue = 9, random = Random(1))
 
         repeat(totalRounds) {
             session = submitAnswer(session, answer = -1, random = Random(it + 2))

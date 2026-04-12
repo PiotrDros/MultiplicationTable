@@ -17,9 +17,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -42,6 +42,12 @@ import kotlinx.coroutines.delay
 
 private enum class AppScreen { Start, Game, Summary }
 
+private enum class MultiplicationRange(val min: Int, val max: Int, val labelResId: Int) {
+    Range2To9(min = 2, max = 9, labelResId = R.string.range_option_2_9),
+    Range2To5(min = 2, max = 5, labelResId = R.string.range_option_2_5),
+    Range6To9(min = 6, max = 9, labelResId = R.string.range_option_6_9),
+}
+
 private val screenPadding = 32.dp
 private val sectionSpacing = 20.dp
 private val buttonHeight = 64.dp
@@ -62,6 +68,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@Preview(showBackground = true)
 @Composable
 private fun MultiplicationGameApp(modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -71,15 +78,15 @@ private fun MultiplicationGameApp(modifier: Modifier = Modifier) {
     }
 
     var screen by remember { mutableStateOf(AppScreen.Start) }
-    var selectedMinimum by remember { mutableStateOf(2) }
-    var gameSession by remember { mutableStateOf(startSession(selectedMinimum)) }
+    var selectedRange by remember { mutableStateOf(MultiplicationRange.Range2To9) }
+    var gameSession by remember { mutableStateOf(startSession(selectedRange.min, selectedRange.max)) }
 
     when (screen) {
         AppScreen.Start -> StartScreen(
-            selectedMinimum = selectedMinimum,
-            onMinimumSelected = { selectedMinimum = it },
+            selectedRange = selectedRange,
+            onRangeSelected = { selectedRange = it },
             onStartClicked = {
-                gameSession = startSession(selectedMinimum)
+                gameSession = startSession(selectedRange.min, selectedRange.max)
                 screen = AppScreen.Game
             },
             modifier = modifier,
@@ -102,7 +109,7 @@ private fun MultiplicationGameApp(modifier: Modifier = Modifier) {
             score = gameSession.score,
             rounds = gameSession.totalRounds,
             onPlayAgainClicked = {
-                gameSession = startSession(selectedMinimum)
+                gameSession = startSession(selectedRange.min, selectedRange.max)
                 screen = AppScreen.Game
             },
             onChangeRangeClicked = { screen = AppScreen.Start },
@@ -111,11 +118,12 @@ private fun MultiplicationGameApp(modifier: Modifier = Modifier) {
     }
 }
 
+@Preview(showBackground = true)
 @Composable
 private fun StartScreen(
-    selectedMinimum: Int,
-    onMinimumSelected: (Int) -> Unit,
-    onStartClicked: () -> Unit,
+    selectedRange: MultiplicationRange = MultiplicationRange.Range2To9,
+    onRangeSelected: (MultiplicationRange) -> Unit = {},
+    onStartClicked: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -123,14 +131,26 @@ private fun StartScreen(
         verticalArrangement = Arrangement.spacedBy(sectionSpacing),
     ) {
         Text(text = stringResource(R.string.start_title), style = MaterialTheme.typography.headlineLarge)
-        Text(text = stringResource(R.string.range_label, selectedMinimum), style = MaterialTheme.typography.titleLarge)
-        Slider(
-            value = selectedMinimum.toFloat(),
-            onValueChange = { onMinimumSelected(it.toInt().coerceIn(2, 9)) },
-            valueRange = 2f..9f,
-            steps = 6,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Text(text = stringResource(R.string.range_label), style = MaterialTheme.typography.titleLarge)
+        Text(text = stringResource(selectedRange.labelResId), style = MaterialTheme.typography.titleLarge)
+        MultiplicationRange.entries.forEach { range ->
+            val isSelected = range == selectedRange
+            if (isSelected) {
+                Button(
+                    onClick = { onRangeSelected(range) },
+                    modifier = Modifier.fillMaxWidth().height(buttonHeight),
+                ) {
+                    Text(text = stringResource(range.labelResId), style = MaterialTheme.typography.titleLarge)
+                }
+            } else {
+                OutlinedButton(
+                    onClick = { onRangeSelected(range) },
+                    modifier = Modifier.fillMaxWidth().height(buttonHeight),
+                ) {
+                    Text(text = stringResource(range.labelResId), style = MaterialTheme.typography.titleLarge)
+                }
+            }
+        }
         Button(
             onClick = onStartClicked,
             modifier = Modifier.fillMaxWidth().height(buttonHeight),

@@ -13,7 +13,8 @@ data class Round(
 }
 
 data class GameSession(
-    val minValue: Int,
+    val minMultiplier: Int,
+    val maxMultiplier: Int,
     val score: Int,
     val roundNumber: Int,
     val totalRounds: Int,
@@ -22,14 +23,15 @@ data class GameSession(
     val isFinished: Boolean = roundNumber > totalRounds
 }
 
-fun startSession(minValue: Int, random: Random = Random.Default): GameSession {
-    val safeMin = minValue.coerceIn(2, maxMultiplier)
+fun startSession(minValue: Int, maxValue: Int, random: Random = Random.Default): GameSession {
+    val (safeMin, safeMax) = normalizeRange(minValue, maxValue)
     return GameSession(
-        minValue = safeMin,
+        minMultiplier = safeMin,
+        maxMultiplier = safeMax,
         score = 0,
         roundNumber = 1,
         totalRounds = totalRounds,
-        currentRound = generateRound(safeMin, random),
+        currentRound = generateRound(safeMin, safeMax, random),
     )
 }
 
@@ -50,16 +52,26 @@ fun submitAnswer(session: GameSession, answer: Int, random: Random = Random.Defa
         session.copy(
             score = session.score + roundPoint,
             roundNumber = nextRoundNumber,
-            currentRound = generateRound(session.minValue, random),
+            currentRound = generateRound(session.minMultiplier, session.maxMultiplier, random),
         )
     }
 }
 
-fun generateRound(minValue: Int, random: Random = Random.Default): Round {
-    val safeMin = minValue.coerceIn(2, maxMultiplier)
+fun generateRound(minValue: Int, maxValue: Int, random: Random = Random.Default): Round {
+    val (safeMin, safeMax) = normalizeRange(minValue, maxValue)
     return Round(
-        left = random.nextInt(safeMin, maxMultiplier + 1),
-        right = random.nextInt(safeMin, maxMultiplier + 1),
+        left = random.nextInt(safeMin, safeMax + 1),
+        right = random.nextInt(safeMin, safeMax + 1),
     )
+}
+
+private fun normalizeRange(minValue: Int, maxValue: Int): Pair<Int, Int> {
+    val safeMin = minValue.coerceIn(2, maxMultiplier)
+    val safeMax = maxValue.coerceIn(2, maxMultiplier)
+    return if (safeMin <= safeMax) {
+        safeMin to safeMax
+    } else {
+        safeMax to safeMin
+    }
 }
 
