@@ -4,6 +4,7 @@ import kotlin.random.Random
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.reflect.KProperty
 
 class ExampleUnitTest {
     @Test
@@ -44,5 +45,29 @@ class ExampleUnitTest {
 
         assertTrue(session.isFinished)
         assertEquals(totalRounds + 1, session.roundNumber)
+    }
+
+
+    @Test
+    fun user_test() {
+        var p: String by Delegate()
+        p = "Hello"
+        println(">>> " + p)
+
+    }
+}
+
+
+class Delegate {
+    private var field: String = ""
+
+    operator fun getValue(thisRef: Any?, property: KProperty<*>): String {
+        println("Accessing '${property.name}' in $thisRef, current value: '$field'. ")
+        return field
+    }
+
+    operator fun setValue(thisRef: Any?, property: KProperty<*>, value: String) {
+        field = value
+        println("$value has been assigned to '${property.name}' in $thisRef.")
     }
 }
