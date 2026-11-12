@@ -38,7 +38,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.multiplicationtable.ui.theme.MultiplicationTableTheme
-import kotlinx.coroutines.delay
 
 private enum class AppScreen { Start, Game, Summary }
 
@@ -96,12 +95,12 @@ private fun MultiplicationGameApp(modifier: Modifier = Modifier) {
             session = gameSession,
             audioPlayer = audioPlayer,
             onSubmitAnswer = { input ->
-                val answer = input.toIntOrNull() ?: return@GameScreen false
+                val answer = input.toIntOrNull() ?: return@GameScreen null
                 val updatedSession = submitAnswer(gameSession, answer)
                 gameSession = updatedSession
-                if (updatedSession.isFinished) screen = AppScreen.Summary
-                true
+                updatedSession
             },
+            onFinished = { screen = AppScreen.Summary },
             modifier = modifier,
         )
 
@@ -163,7 +162,8 @@ private fun StartScreen(
 @Composable
 private fun GameScreen(
     session: GameSession,
-    onSubmitAnswer: (String) -> Boolean,
+    onSubmitAnswer: (String) -> GameSession?,
+    onFinished: () -> Unit,
     audioPlayer: AudioPlayer,
     modifier: Modifier = Modifier,
 ) {
@@ -172,7 +172,6 @@ private fun GameScreen(
     var showInputError by remember { mutableStateOf(false) }
     var feedbackMessage by remember { mutableStateOf<String?>(null) }
     var isCorrect by remember { mutableStateOf(false) }
-    var feedbackDurationMs by remember { mutableStateOf(0L) }
 
     val currentRound = session.currentRound
     val feedbackCorrect = stringResource(R.string.feedback_correct)
@@ -190,22 +189,16 @@ private fun GameScreen(
         }
     }
 
-    // Hide feedback card after the configured delay, then clear input.
-    LaunchedEffect(feedbackMessage, feedbackDurationMs) {
-        if (feedbackMessage != null) {
-            delay(feedbackDurationMs)
-            feedbackMessage = null
-            answerInput = ""
-            showInputError = false
-        }
-    }
-
     Column(
         modifier = modifier.fillMaxSize().padding(screenPadding),
         verticalArrangement = Arrangement.spacedBy(sectionSpacing),
     ) {
         Text(
-            text = stringResource(R.string.round_progress, session.roundNumber, session.totalRounds),
+            text = stringResource(
+                R.string.round_progress,
+                minOf(session.roundNumber, session.totalRounds),
+                session.totalRounds
+            ),
             style = MaterialTheme.typography.headlineMedium,
         )
         Text(text = stringResource(R.string.score_label, session.score), style = MaterialTheme.typography.titleLarge)
@@ -243,23 +236,29 @@ private fun GameScreen(
         Button(
             onClick = {
                 val submittedAnswer = answerInput.toIntOrNull()
-                val capturedRound = currentRound
-                val accepted = onSubmitAnswer(answerInput)
-                if (!accepted) {
+                val capturedProduct = currentRound.product
+                val updatedSession = onSubmitAnswer(answerInput)
+                if (updatedSession == null) {
                     showInputError = true
                 } else {
-                    val isAnswerCorrect = submittedAnswer == capturedRound.product
+                    val isAnswerCorrect = submittedAnswer == capturedProduct
                     isCorrect = isAnswerCorrect
-                    answerInput = ""
                     showInputError = false
+                    
+                    val onCompleteFeedback = {
+                        feedbackMessage = null
+                        answerInput = ""
+                        if (updatedSession.isFinished) {
+                            onFinished()
+                        }
+                    }
+
                     if (isAnswerCorrect) {
-                        feedbackDurationMs = 1500
                         feedbackMessage = feedbackCorrect
-                        audioPlayer.playSequence(correctAudioResIds(context))
+                        audioPlayer.playSequence(correctAudioResIds(context), onCompleteFeedback)
                     } else {
-                        feedbackDurationMs = 8000
                         feedbackMessage = feedbackIncorrectWithResult
-                        audioPlayer.playSequence(wrongAudioResIds(context, capturedRound.product))
+                        audioPlayer.playSequence(wrongAudioResIds(context, capturedProduct), onCompleteFeedback)
                     }
                 }
             },
@@ -287,6 +286,7 @@ private fun GameScreen(
         }
     }
 }
+
 @Preview(showBackground = true)
 @Composable
 private fun SummaryScreen(
